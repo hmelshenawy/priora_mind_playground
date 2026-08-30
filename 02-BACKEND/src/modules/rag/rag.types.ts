@@ -1,5 +1,3 @@
-export type RetrievalStatus = 'ok' | 'unavailable' | 'invalid_response' | 'timeout';
-
 export interface RetrievalSearchRequest {
   question: string;
   limit?: number;
@@ -24,9 +22,12 @@ export interface RetrievedChunk {
   text_hash: string;
 }
 
-export interface RetrievalSearchResult {
-  status: RetrievalStatus;
-  correlationId: string;
-  chunks: RetrievedChunk[];
-  errorCode?: string;
-}
+export type RagFailureCode = 'RAG_TIMEOUT' | 'RAG_UNAVAILABLE' | 'RAG_INVALID_RESPONSE';
+
+export type RagResponse =
+  | { status: 'ok'; correlationId: string; chunks: RetrievedChunk[] }
+  | { status: 'not_enough_evidence'; correlationId: string; chunks: [] }
+  | { status: 'failed'; correlationId: string; chunks: []; failureCode: RagFailureCode };
+
+/** Existing public name retained for callers outside the conversation pipeline. */
+export type RetrievalSearchResult = RagResponse;

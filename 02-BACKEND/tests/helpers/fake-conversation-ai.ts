@@ -1,35 +1,36 @@
 import type { LlmRequest, LlmResponse } from '../../src/modules/ai/llm.types';
 
-/** Deterministic fake of AiService.generate for conversation flows: returns
- *  already-parsed structured content keyed on the request's schemaName. */
+/** Deterministic provider fake for the two fixed-pipeline LLM calls. */
+
 export class FakeConversationAi {
-  groundedAnswerCalls = 0;
-  rewriteCalls = 0;
+  answerCalls = 0;
+  ragMessageCalls = 0;
+  requests: LlmRequest[] = [];
+
+  constructor(private readonly ragMessages: string[] = []) {}
 
   async generate(request: LlmRequest): Promise<LlmResponse> {
-    if (request.schemaName === 'follow_up_rewrite') {
-      this.rewriteCalls += 1;
-      const input = JSON.parse(request.input) as { recentHistory: Array<{ content: string }>; currentMessage: string };
-      const lastTopic = [...input.recentHistory].reverse().find((item) => item.content.trim())?.content;
+    this.requests.push(request);
+    if (request.schemaName === 'rag_message') {
+      this.ragMessageCalls += 1;
+      const input = JSON.parse(request.input) as { userMessage: string };
       return {
-        content: {
-          standaloneRetrievalQuery: lastTopic
-            ? `${input.currentMessage.trim()} about ${lastTopic.trim()}`
-            : input.currentMessage.trim(),
-        },
+        content: { ragMessage: this.ragMessages.shift() ?? input.userMessage.trim() },
         usage: { prompt: 0, completion: 0, total: 0 },
         latencyMs: 0,
         modelId: 'fake-conversation-ai',
       };
     }
-    this.groundedAnswerCalls += 1;
+    this.answerCalls += 1;
     const input = JSON.parse(request.input) as {
-      supportingEvidence: Array<{ chunk_id: string; source_id: string; text_hash: string }>;
+      ragResponse: { chunks: Array<{ chunk_id: string; source_id: string; text_hash: string }> };
     };
-    const firstChunk = input.supportingEvidence[0];
+    const firstChunk = input.ragResponse.chunks[0];
     return {
       content: {
-        content: 'Fixture grounded conversation answer.',
+        content: firstChunk
+          ? 'Fixture grounded conversation answer.'
+          : 'Fixture conversational answer.',
         citations: firstChunk
           ? [{ chunk_id: firstChunk.chunk_id, source_id: firstChunk.source_id, text_hash: firstChunk.text_hash }]
           : [],
@@ -39,4 +40,5 @@ export class FakeConversationAi {
       modelId: 'fake-conversation-ai',
     };
   }
+
 }

@@ -14,7 +14,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
  * All queries are userId-scoped (404 — never 403 — for foreign rows).
  */
 @Injectable()
-export class ConversationLifecycleService {
+export class ConversationsService {
   constructor(
     private readonly access: ConversationAccessService,
     private readonly prisma: PrismaService,

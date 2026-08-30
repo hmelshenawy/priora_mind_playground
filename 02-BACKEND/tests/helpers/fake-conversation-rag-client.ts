@@ -6,7 +6,7 @@ import type {
 export class FakeConversationRagClient {
   searchCalls: Array<{ request: RetrievalSearchRequest; correlationId: string }> = [];
   nextSearchResult: RetrievalSearchResult = {
-    status: 'ok',
+    status: 'not_enough_evidence',
     correlationId: 'corr-1',
     chunks: [],
   };

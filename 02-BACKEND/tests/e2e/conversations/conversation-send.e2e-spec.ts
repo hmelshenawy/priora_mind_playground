@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ConversationArchivedException } from '../../../src/modules/conversations/constants/conversation.errors';
-import { ConversationMessageService } from '../../../src/modules/conversations/services/conversation-message.service';
-import { ConversationContextService } from '../../../src/modules/conversations/services/conversation-context.service';
-import { ConversationFollowUpRewriteService } from '../../../src/modules/conversations/services/conversation-follow-up-rewrite.service';
+import { makeConversationStack } from '../../helpers/conversation-service-factory';
 import { makeConversationPrismaStub } from '../../helpers/fake-conversation-prisma';
 
 const conversation = {
@@ -17,17 +15,12 @@ const conversation = {
 
 function makeService(status = 'ACTIVE') {
   const prisma = makeConversationPrismaStub({ conversation: { ...conversation, status } });
-  const service = new ConversationMessageService(
-    prisma as never,
-    { assertEligible: async () => undefined } as never,
-    new ConversationContextService(prisma as never),
-    new ConversationFollowUpRewriteService(undefined),
-  );
+  const { service } = makeConversationStack({ prisma });
   return { service, prisma };
 }
 
 describe('conversation send-message', () => {
-  it('persists a user message before a deterministic assistant result and touches conversation timestamps', async () => {
+  it('persists a user message before the assistant result and touches conversation timestamps', async () => {
     const { service, prisma } = makeService();
     const result = await service.send('user-1', conversation.id, { content: 'Hello' });
     expect(result).toMatchObject({
@@ -35,6 +28,7 @@ describe('conversation send-message', () => {
       userMessage: { id: 'user-message-1', role: 'user', status: 'COMPLETED' },
       assistantMessage: { id: 'assistant-message-1', role: 'assistant', status: 'COMPLETED' },
     });
+    expect(result.assistantMessage).toMatchObject({ route: null, content: 'Fixture conversational answer.' });
     const [userCall, assistantCall] = prisma.conversationMessage.create.mock.calls;
     expect(userCall[0].data.role).toBe('user');
     expect(assistantCall[0].data.role).toBe('assistant');

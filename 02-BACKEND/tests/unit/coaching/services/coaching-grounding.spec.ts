@@ -60,8 +60,11 @@ describe('CoachingGroundingService', () => {
 
   it('looks up pinned snapshots by exact version and no active flag', async () => {
     const db = prisma();
-    const bundle = await new CoachingGroundingService(db as never).assemble(scoredResult);
-    expect(bundle).toBeDefined();
+    // RAG is a required dependency now — satisfied with a stub; this
+    // assertion is about the DB lookups, not retrieval.
+    const rag = { search: vi.fn().mockResolvedValue({ status: 'failed', correlationId: 'c', chunks: [], failureCode: 'RAG_UNAVAILABLE' }) };
+    const service = new CoachingGroundingService(db as never, rag as never);
+    await expect(service.assemble(scoredResult)).rejects.toBeInstanceOf(PlanUnavailableException);
     expect(db.coachingActionLibrary.findUnique).toHaveBeenCalledWith({ where: { version: COACHING_LIBRARY_V1.version } });
     expect(db.coachingDisclaimer.findUnique).toHaveBeenCalledWith({ where: { version: COACHING_DISCLAIMER_V1.version } });
   });

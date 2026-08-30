@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import type { ConversationHistoryItem } from '../conversation-llm.types';
+import type { ConversationHistoryItem } from '../../ai/llm.types';
 import { CONVERSATION_LIMITS } from '../constants/conversation.constants';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
-export class ConversationContextService {
+export class ConversationHistoryService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Load the recent COMPLETED user/assistant messages (newest first), trimmed

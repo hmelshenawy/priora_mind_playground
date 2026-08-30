@@ -36,7 +36,8 @@ export interface ConversationMessageRowLike {
   role: 'user' | 'assistant' | 'system';
   content: string;
   status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
-  route: 'SYSTEM_COMMAND' | 'STATIC_RESPONSE' | 'RAG' | null;
+  /** Legacy persisted values remain readable; the fixed pipeline writes null. */
+  route: 'SYSTEM_COMMAND' | 'RAG' | 'STATIC_RESPONSE' | null;
   createdAt: Date;
   completedAt: Date | null;
   sources?: AssistantSourceRowLike[];

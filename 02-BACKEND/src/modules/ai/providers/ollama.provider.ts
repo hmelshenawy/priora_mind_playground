@@ -54,11 +54,9 @@ export class OllamaProvider implements LlmProvider {
 
       // Read the body as text first so a mid-stream reset (network) is not
       // conflated with a JSON parse failure (invalid output).
-      console.log("AI Response:::", response)
       let body: Record<string, unknown>;
       try {
         body = JSON.parse(await response.text());
-        console.log("AI Response Body:::", body)
       } catch {
         throw response.ok
           ? new BadGatewayException('Ollama returned a malformed response')
@@ -167,6 +165,9 @@ function isAbortError(error: unknown): boolean {
 function matchesJsonSchema(value: unknown, rawSchema: unknown): boolean {
   if (!isRecord(rawSchema)) return false;
   const schema = rawSchema;
+  if (Array.isArray(schema.type)) {
+    return schema.type.some((type) => matchesJsonSchema(value, { ...schema, type }));
+  }
   if (schema.type === 'object') return matchesObject(value, schema);
   if (schema.type === 'array') return matchesArray(value, schema);
   if (schema.type === 'string') {

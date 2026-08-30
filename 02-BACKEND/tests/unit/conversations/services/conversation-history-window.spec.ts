@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ConversationContextService } from '../../../../src/modules/conversations/services/conversation-context.service';
+import { ConversationHistoryService } from '../../../../src/modules/conversations/services/conversation-history.service';
 
-describe('conversation context window', () => {
+describe('conversation history service', () => {
   it('converts newest-first repository rows into chronological history', () => {
-    const service = new ConversationContextService({} as never);
+    const service = new ConversationHistoryService({} as never);
     const history = service.trimToBudget(
       [
         { role: 'assistant', content: 'newest' },
@@ -17,7 +17,7 @@ describe('conversation context window', () => {
 
   it('excludes the separately supplied current user message', async () => {
     const findMany = vi.fn().mockResolvedValue([]);
-    const service = new ConversationContextService({ conversationMessage: { findMany } } as never);
+    const service = new ConversationHistoryService({ conversationMessage: { findMany } } as never);
     await service.loadRecentHistory('user-1', 'conversation-1', 'current-message');
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ id: { not: 'current-message' } }) }),

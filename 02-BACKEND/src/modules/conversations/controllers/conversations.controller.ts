@@ -23,7 +23,7 @@ import {
   PatchConversationDto,
   SendMessageDto,
 } from '../dto/conversation.dto';
-import { ConversationLifecycleService } from '../services/conversation-lifecycle.service';
+import { ConversationsService } from '../services/conversations.service';
 import { ConversationMessageService } from '../services/conversation-message.service';
 
 export class ConversationIdParamDto {
@@ -35,18 +35,18 @@ export class ConversationIdParamDto {
 @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
 export class ConversationsController {
   constructor(
-    private readonly lifecycle: ConversationLifecycleService,
+    private readonly conversations: ConversationsService,
     private readonly messages: ConversationMessageService,
   ) {}
 
   @Post()
   create(@Req() req: Request, @Body() body: CreateConversationDto) {
-    return this.lifecycle.create(this.userId(req), body);
+    return this.conversations.create(this.userId(req), body);
   }
 
   @Get()
   list(@Req() req: Request, @Query() query: ListConversationsQueryDto) {
-    return this.lifecycle.list(this.userId(req), query);
+    return this.conversations.list(this.userId(req), query);
   }
 
   @Get(':conversationId')
@@ -55,7 +55,7 @@ export class ConversationsController {
     @Param() params: ConversationIdParamDto,
     @Query() query: GetConversationQueryDto,
   ) {
-    return this.lifecycle.get(this.userId(req), params.conversationId, query.messagesCursor, query.messagesLimit);
+    return this.conversations.get(this.userId(req), params.conversationId, query.messagesCursor, query.messagesLimit);
   }
 
   @Patch(':conversationId')
@@ -64,13 +64,13 @@ export class ConversationsController {
     @Param() params: ConversationIdParamDto,
     @Body() body: PatchConversationDto,
   ) {
-    return this.lifecycle.patch(this.userId(req), params.conversationId, body);
+    return this.conversations.patch(this.userId(req), params.conversationId, body);
   }
 
   @Delete(':conversationId')
   @HttpCode(204)
   async delete(@Req() req: Request, @Param() params: ConversationIdParamDto): Promise<void> {
-    await this.lifecycle.delete(this.userId(req), params.conversationId);
+    await this.conversations.delete(this.userId(req), params.conversationId);
   }
 
   @Post(':conversationId/messages')

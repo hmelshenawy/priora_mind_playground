@@ -51,29 +51,55 @@ describe('Retrieval HTTP boundary', () => {
     expect(result).toEqual({ status: 'ok', correlationId: 'corr-1', chunks: [chunk] });
   });
 
-  it('passes optional limit and threshold through without supplying policy defaults', async () => {
+  it('owns and supplies the configured retrieval policy defaults', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ results: [] }) });
     vi.stubGlobal('fetch', fetchMock);
 
     await new RagService().search({ question: 'x' }, 'corr-2');
 
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({ question: 'x' });
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({
+      question: 'x', limit: 6, score_threshold: 0.44,
+    });
+  });
+
+  it('returns not_enough_evidence when retrieved chunks are below the configured threshold', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ results: [{ ...chunk, score: 0.43 }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(new RagService().search({ question: 'x' }, 'corr')).resolves.toEqual({
+      status: 'not_enough_evidence', correlationId: 'corr', chunks: [],
+    });
+  });
+
+  it('removes duplicate and invalid evidence before returning useful chunks', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ results: [chunk, chunk, { ...chunk, chunk_id: '' }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(new RagService().search({ question: 'x' }, 'corr')).resolves.toEqual({
+      status: 'ok', correlationId: 'corr', chunks: [chunk],
+    });
   });
 
   it('normalizes missing config and unavailable or unauthorized service without an HTTP retry', async () => {
     vi.stubEnv('RAG_BASE_URL', '');
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    await expect(new RagService().search(request, 'corr')).resolves.toMatchObject({ status: 'unavailable', errorCode: 'RAG_UNAVAILABLE' });
+    await expect(new RagService().search(request, 'corr')).resolves.toMatchObject({ status: 'failed', failureCode: 'RAG_UNAVAILABLE' });
     expect(fetchMock).not.toHaveBeenCalled();
 
     vi.stubEnv('RAG_BASE_URL', 'https://rag.local');
     fetchMock.mockResolvedValueOnce({ ok: false, status: 503 });
-    await expect(new RagService().search(request, 'corr')).resolves.toMatchObject({ status: 'unavailable', errorCode: 'RAG_UNAVAILABLE' });
+    await expect(new RagService().search(request, 'corr')).resolves.toMatchObject({ status: 'failed', failureCode: 'RAG_UNAVAILABLE' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     fetchMock.mockResolvedValueOnce({ ok: false, status: 401 });
-    await expect(new RagService().search(request, 'corr')).resolves.toMatchObject({ status: 'unavailable', errorCode: 'RAG_UNAUTHORIZED' });
+    await expect(new RagService().search(request, 'corr')).resolves.toMatchObject({ status: 'failed', failureCode: 'RAG_UNAVAILABLE' });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -84,7 +110,7 @@ describe('Retrieval HTTP boundary', () => {
     }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(new RagService().search(request, 'corr')).resolves.toMatchObject({ status: 'timeout', errorCode: 'RAG_TIMEOUT' });
+    await expect(new RagService().search(request, 'corr')).resolves.toMatchObject({ status: 'failed', failureCode: 'RAG_TIMEOUT' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -95,7 +121,7 @@ describe('Retrieval HTTP boundary', () => {
   ])('normalizes %s as a transport failure', async (_label, bodyFactory) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: bodyFactory }));
     const result = await new RagService().search(request, 'corr');
-    expect(['unavailable', 'invalid_response']).toContain(result.status);
+    expect(result.status).toBe('failed');
     expect(result.chunks).toEqual([]);
   });
 });

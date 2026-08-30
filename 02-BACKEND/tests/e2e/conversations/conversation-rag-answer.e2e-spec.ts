@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeConversationAi } from '../../helpers/fake-conversation-ai';
-import { ConversationMessageService } from '../../../src/modules/conversations/services/conversation-message.service';
-import { ConversationContextService } from '../../../src/modules/conversations/services/conversation-context.service';
-import { ConversationFollowUpRewriteService } from '../../../src/modules/conversations/services/conversation-follow-up-rewrite.service';
 import { FakeConversationRagClient } from '../../helpers/fake-conversation-rag-client';
+import { makeConversationStack } from '../../helpers/conversation-service-factory';
 import { makeConversationPrismaStub } from '../../helpers/fake-conversation-prisma';
 
 const conversation = {
@@ -40,21 +38,14 @@ describe('conversation RAG answer e2e', () => {
     rag.nextSearchResult = { status: 'ok', correlationId: 'corr-1', chunks: [chunk] };
     const ai = new FakeConversationAi();
     const prisma = makeConversationPrismaStub({ conversation });
-    const service = new ConversationMessageService(
-      prisma as never,
-      { assertEligible: async () => undefined } as never,
-      new ConversationContextService(prisma as never),
-      new ConversationFollowUpRewriteService(ai),
-      rag,
-      ai,
-    );
+const { service } = makeConversationStack({ prisma, provider: ai, rag });
 
     const result = await service.send('user-1', conversation.id, { content: 'What is grounding?' });
-    expect(result.assistantMessage).toMatchObject({ route: 'RAG', status: 'COMPLETED', content: 'Fixture grounded conversation answer.' });
+    expect(result.assistantMessage).toMatchObject({ route: null, status: 'COMPLETED', content: 'Fixture grounded conversation answer.' });
     expect(result.assistantMessage.sources).toEqual([
       expect.objectContaining({ chunkId: 'chunk-rag-1', sourceId: 'source-rag-1', textHash: 'hash-rag-1' }),
     ]);
-    expect(rag.searchCalls[0].request).toMatchObject({ question: 'What is grounding?', limit: 6, score_threshold: 0.44 });
-    expect(ai.groundedAnswerCalls).toBe(1);
+    expect(rag.searchCalls[0].request).toEqual({ question: 'What is grounding?' });
+    expect(ai.answerCalls).toBe(1);
   });
 });

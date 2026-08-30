@@ -120,19 +120,21 @@ describe('Ollama local and cloud structured responses', () => {
   });
 });
 
-const followUpSchema = {
+const ragMessageSchema = {
   type: 'object',
   additionalProperties: false,
-  required: ['standaloneRetrievalQuery'],
-  properties: { standaloneRetrievalQuery: { type: 'string', minLength: 1 } },
+  required: ['ragMessage'],
+  properties: {
+    ragMessage: { type: 'string', minLength: 1 },
+  },
 };
 
-const followUpRequest: LlmRequest = {
+const ragMessageRequest: LlmRequest = {
   instructions:
-    'Rewrite the current message as one standalone retrieval query using only the supplied conversation history. Return JSON matching the required schema. Do not answer the question.',
-  input: '{"recentHistory":[],"currentMessage":"How do I stop it before meetings?"}',
-  schemaName: 'follow_up_rewrite',
-  schema: followUpSchema,
+    'Create a self-contained retrieval message. Return JSON matching the required schema. Never answer the user message itself.',
+  input: '{"history":[],"userMessage":"How do I stop it before meetings?"}',
+  schemaName: 'rag_message',
+  schema: ragMessageSchema,
 };
 
 /** fetch mock that rejects with an AbortError when the request signal aborts. */
@@ -152,13 +154,13 @@ describe('Ollama transport failures', () => {
     vi.restoreAllMocks();
   });
 
-  it('1. completes a follow-up rewrite through Ollama Cloud JSON mode', async () => {
+  it('1. generates a retrieval message through Ollama Cloud JSON mode', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      response(JSON.stringify({ standaloneRetrievalQuery: 'how to manage work anxiety before meetings' })),
+      response(JSON.stringify({ ragMessage: 'How does Cognitive Behavioral Therapy help with work anxiety before meetings?' })),
     );
     vi.stubGlobal('fetch', fetchMock);
-    const result = await client('qwen3.5:cloud', 'http://127.0.0.1:11434', 5000).generate(followUpRequest);
-    expect(result.content).toEqual({ standaloneRetrievalQuery: 'how to manage work anxiety before meetings' });
+    const result = await client('qwen3.5:cloud', 'http://127.0.0.1:11434', 5000).generate(ragMessageRequest);
+    expect(result.content).toEqual({ ragMessage: 'How does Cognitive Behavioral Therapy help with work anxiety before meetings?' });
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(body.model).toBe('qwen3.5:cloud');
     expect(body.stream).toBe(false);
@@ -178,13 +180,13 @@ describe('Ollama transport failures', () => {
         ),
       ),
     );
-    await expect(client().generate(followUpRequest)).rejects.toThrow(BadGatewayException);
-    await expect(client().generate(followUpRequest)).rejects.toMatchObject({ message: 'model load failed' });
+    await expect(client().generate(ragMessageRequest)).rejects.toThrow(BadGatewayException);
+    await expect(client().generate(ragMessageRequest)).rejects.toMatchObject({ message: 'model load failed' });
   });
 
   it('3. maps a timeout abort to a 504', async () => {
     vi.stubGlobal('fetch', signalRespectingFetch());
-    const promise = client('qwen3.5:cloud', 'http://127.0.0.1:11434', 30).generate(followUpRequest);
+    const promise = client('qwen3.5:cloud', 'http://127.0.0.1:11434', 30).generate(ragMessageRequest);
     await expect(promise).rejects.toThrow(GatewayTimeoutException);
     await expect(promise).rejects.toMatchObject({ message: 'Ollama request timed out' });
   });
@@ -200,7 +202,7 @@ describe('Ollama transport failures', () => {
         });
       })),
     );
-    const promise = client('qwen3.5:cloud', 'http://127.0.0.1:11434', 30).generate(followUpRequest);
+    const promise = client('qwen3.5:cloud', 'http://127.0.0.1:11434', 30).generate(ragMessageRequest);
     await expect(promise).rejects.toThrow(GatewayTimeoutException);
   });
 
@@ -208,13 +210,13 @@ describe('Ollama transport failures', () => {
     const err = new TypeError('fetch failed');
     err.cause = { code: 'ECONNREFUSED' };
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(err));
-    await expect(client().generate(followUpRequest)).rejects.toThrow(BadGatewayException);
-    await expect(client().generate(followUpRequest)).rejects.toMatchObject({ message: 'Ollama provider is unreachable' });
+    await expect(client().generate(ragMessageRequest)).rejects.toThrow(BadGatewayException);
+    await expect(client().generate(ragMessageRequest)).rejects.toMatchObject({ message: 'Ollama provider is unreachable' });
   });
 
   it.each([500, 502, 503])('5. maps upstream HTTP %i to a 502', async (status) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status })));
-    await expect(client().generate(followUpRequest)).rejects.toThrow(BadGatewayException);
+    await expect(client().generate(ragMessageRequest)).rejects.toThrow(BadGatewayException);
   });
 
   it('6. clears the timeout timer after a successful response', async () => {
@@ -239,12 +241,12 @@ describe('Ollama transport failures', () => {
         });
       }))
       // B: resolves immediately and must remain unaffected by A's abort.
-      .mockResolvedValueOnce(response(JSON.stringify({ standaloneRetrievalQuery: 'how to manage work anxiety' })));
+      .mockResolvedValueOnce(response(JSON.stringify({ ragMessage: 'how to manage work anxiety' })));
     vi.stubGlobal('fetch', fetchMock);
     const c = client('qwen3.5:cloud', 'http://127.0.0.1:11434', 30);
-    const aPromise = c.generate(followUpRequest);
-    const bPromise = c.generate(followUpRequest);
-    await expect(bPromise).resolves.toMatchObject({ content: { standaloneRetrievalQuery: 'how to manage work anxiety' } });
+    const aPromise = c.generate(ragMessageRequest);
+    const bPromise = c.generate(ragMessageRequest);
+    await expect(bPromise).resolves.toMatchObject({ content: { ragMessage: 'how to manage work anxiety' } });
     await expect(aPromise).rejects.toThrow(GatewayTimeoutException);
   });
 });

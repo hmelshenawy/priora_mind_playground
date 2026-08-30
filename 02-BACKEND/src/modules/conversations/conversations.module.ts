@@ -1,24 +1,21 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AiModule } from '../ai/ai.module';
-import { RagModule } from '../rag/rag.module';
 import { ConversationAccessService } from './services/conversation-access.service';
-import { ConversationLifecycleService } from './services/conversation-lifecycle.service';
+import { ConversationsService } from './services/conversations.service';
 import { ConversationMessageService } from './services/conversation-message.service';
-import { ConversationContextService } from './services/conversation-context.service';
-import { ConversationFollowUpRewriteService } from './services/conversation-follow-up-rewrite.service';
+import { ConversationHistoryService } from './services/conversation-history.service';
 import { ConversationsController } from './controllers/conversations.controller';
 
 @Module({
-  imports: [PrismaModule, AiModule, RagModule],
+  imports: [PrismaModule, AiModule],
   controllers: [ConversationsController],
   providers: [
     ConversationAccessService,
-    ConversationLifecycleService,
-    ConversationContextService,
-    ConversationFollowUpRewriteService,
+    ConversationsService,
+    ConversationHistoryService,
     ConversationMessageService,
   ],
-  exports: [ConversationLifecycleService, ConversationMessageService],
+  exports: [ConversationsService, ConversationMessageService],
 })
 export class ConversationsModule {}

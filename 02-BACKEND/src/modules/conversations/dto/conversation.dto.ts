@@ -58,7 +58,8 @@ export class SendMessageDto {
 
 export type ConversationStatusDto = 'ACTIVE' | 'ARCHIVED';
 export type ConversationMessageRoleDto = 'user' | 'assistant' | 'system';
-export type ConversationMessageRouteDto = 'SYSTEM_COMMAND' | 'STATIC_RESPONSE' | 'RAG';
+/** Legacy persisted values remain readable; the fixed pipeline writes null. */
+export type ConversationMessageRouteDto = 'SYSTEM_COMMAND' | 'RAG' | 'STATIC_RESPONSE';
 export type ConversationMessageStatusDto = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
 export interface ConversationSummaryDto {

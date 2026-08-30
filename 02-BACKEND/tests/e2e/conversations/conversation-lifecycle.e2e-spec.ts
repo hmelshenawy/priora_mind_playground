@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ConversationAccessService } from '../../../src/modules/conversations/services/conversation-access.service';
-import { ConversationLifecycleService } from '../../../src/modules/conversations/services/conversation-lifecycle.service';
+import { ConversationsService } from '../../../src/modules/conversations/services/conversations.service';
 import { makeConversationPrismaStub } from '../../helpers/fake-conversation-prisma';
 
 const row = {
@@ -16,7 +16,7 @@ const row = {
 function makeService() {
   const prisma = makeConversationPrismaStub({ conversation: row });
   const access = new ConversationAccessService(prisma as never);
-  const service = new ConversationLifecycleService(access, prisma as never);
+  const service = new ConversationsService(access, prisma as never);
   return { service, prisma };
 }
 

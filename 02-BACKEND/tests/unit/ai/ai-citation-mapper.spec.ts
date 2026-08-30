@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapCitations } from '../../../../src/modules/conversations/utils/conversation-citation-mapper';
+import { mapCitations } from '../../../src/modules/ai/ai.service';
 
 const chunk = {
   chunk_id: 'chunk-1',
@@ -21,11 +21,7 @@ const chunk = {
 describe('conversation citation mapper', () => {
   it('maps supplied chunk citations with page range metadata', () => {
     const sources = mapCitations(
-      {
-        content: 'Use grounding.',
-        citations: [{ chunk_id: 'chunk-1', source_id: 'source-1', text_hash: 'hash-1' }],
-        modelId: 'fake',
-      },
+      [{ chunk_id: 'chunk-1', source_id: 'source-1', text_hash: 'hash-1' }],
       [chunk],
     );
     expect(sources).toEqual([
@@ -43,11 +39,7 @@ describe('conversation citation mapper', () => {
   it('rejects unknown chunk citations', () => {
     expect(() =>
       mapCitations(
-        {
-          content: 'Bad citation.',
-          citations: [{ chunk_id: 'missing', source_id: 'source-1', text_hash: 'hash-1' }],
-          modelId: 'fake',
-        },
+        [{ chunk_id: 'missing', source_id: 'source-1', text_hash: 'hash-1' }],
         [chunk],
       ),
     ).toThrow('UNKNOWN_RAG_CITATION');
@@ -55,11 +47,7 @@ describe('conversation citation mapper', () => {
 
   it('uses fallback display metadata when page fields are missing', () => {
     const sources = mapCitations(
-      {
-        content: 'Use grounding.',
-        citations: [{ chunk_id: 'chunk-1', source_id: 'source-1', text_hash: 'hash-1' }],
-        modelId: 'fake',
-      },
+      [{ chunk_id: 'chunk-1', source_id: 'source-1', text_hash: 'hash-1' }],
       [{ ...chunk, page_number: undefined, page_start: undefined, page_end: undefined }],
     );
     expect(sources[0]).toMatchObject({ sourceTitle: 'Grounding Guide', sourceFile: 'guide.pdf' });
@@ -75,14 +63,10 @@ describe('conversation citation mapper', () => {
       chunk_index: 4,
     };
     const sources = mapCitations(
-      {
-        content: 'Grounded answer with ordered citations.',
-        citations: [
+      [
           { chunk_id: 'chunk-2', source_id: 'source-2', text_hash: 'hash-2' },
           { chunk_id: 'chunk-1', source_id: 'source-1', text_hash: 'hash-1' },
-        ],
-        modelId: 'fake',
-      },
+      ],
       [chunk, second],
     );
     expect(sources.map(({ chunkId, chunkIndex, displayOrder }) => ({ chunkId, chunkIndex, displayOrder }))).toEqual([

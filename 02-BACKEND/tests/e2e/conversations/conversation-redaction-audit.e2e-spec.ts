@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BadGatewayException } from '@nestjs/common';
 import { FakeConversationAi } from '../../helpers/fake-conversation-ai';
-import { ConversationMessageService } from '../../../src/modules/conversations/services/conversation-message.service';
-import { ConversationContextService } from '../../../src/modules/conversations/services/conversation-context.service';
-import { ConversationFollowUpRewriteService } from '../../../src/modules/conversations/services/conversation-follow-up-rewrite.service';
 import { FakeConversationRagClient } from '../../helpers/fake-conversation-rag-client';
+import { makeConversationStack } from '../../helpers/conversation-service-factory';
 import { makeConversationPrismaStub } from '../../helpers/fake-conversation-prisma';
 
 describe('conversation redaction audit', () => {
@@ -29,14 +27,7 @@ describe('conversation redaction audit', () => {
       void sources;
       return Promise.resolve({ id: 'assistant', ...rest, sources: [] });
     });
-    const service = new ConversationMessageService(
-      prisma as never,
-      { assertEligible: async () => undefined } as never,
-      new ConversationContextService(prisma as never),
-      new ConversationFollowUpRewriteService(ai),
-      rag,
-      ai,
-    );
+const { service } = makeConversationStack({ prisma, provider: ai, rag });
 
     await service.send('user', 'conversation', { content: rawMessage });
     const serialized = JSON.stringify(assistantCreates);

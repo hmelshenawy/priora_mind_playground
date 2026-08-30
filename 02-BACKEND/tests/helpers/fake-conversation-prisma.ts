@@ -4,7 +4,7 @@ import { vi } from 'vitest';
  * Prisma-shaped test double for the conversation services (message, context,
  * access, lifecycle). `create` synthesizes user/assistant rows from `data`;
  * `conversationMessage.findMany` returns the supplied history rows (newest
- * first, as ConversationContextService expects); `conversation.findFirst`
+ * first, as ConversationHistoryService expects); `conversation.findFirst`
  * returns the supplied conversation row.
  */
 export function makeConversationPrismaStub(options: {

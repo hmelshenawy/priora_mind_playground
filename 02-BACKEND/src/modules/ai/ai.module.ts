@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { RagModule } from '../rag/rag.module';
 import { AiService } from './ai.service';
 import type { LlmProvider } from './llm.types';
 import { OpenAiProvider } from './providers/openai.provider';
@@ -12,7 +13,7 @@ import { OllamaProvider } from './providers/ollama.provider';
 
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, RagModule],
   providers: [
     {
       provide: 'LLM_PROVIDER',

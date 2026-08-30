@@ -1,9 +1,9 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { COACHING_DISCLAIMER_V1, approvedDisclaimerContentAvailable, coachingDisclaimerIntegrity } from '../constants/coaching-disclaimer';
 import { COACHING_LIBRARY_V1, approvedLibraryContentAvailable, coachingLibraryIntegrity, type CoachingLibraryContent } from '../constants/coaching-library';
 import type { ScoredResultDto } from '../../assessment/dto/assessment.dto';
 import type { GroundingBundle } from '../coaching-llm.types';
-import type { RagService } from '../../rag/rag.service';
+import { RagService } from '../../rag/rag.service';
 import { COACHING_PLAN_PROMPT_TEMPLATE } from '../constants/coaching-plan.prompt';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { PlanUnavailableException } from '../constants/coaching.errors';
@@ -38,7 +38,7 @@ export function buildFocusAreaEvidence(result: ScoredResultDto): GroundingBundle
 export class CoachingGroundingService {
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() private readonly rag?: RagService,
+    private readonly rag: RagService,
   ) {}
 
   get db(): Db {
@@ -84,7 +84,6 @@ export class CoachingGroundingService {
       promptVersion: COACHING_PLAN_PROMPT_TEMPLATE.version,
       instructions: [...COACHING_PLAN_PROMPT_TEMPLATE.instructions],
     };
-    if (!this.rag) return bundle;
     const correlationId = `coaching-${result.resultId}`;
     const ragResult = await this.rag.search({
       question: `Coaching guidance for ${focusAreaEvidence.map((area) => area.domain).join(', ')}. Support area: ${result.supportDomain ?? 'none'}.`,
@@ -92,7 +91,7 @@ export class CoachingGroundingService {
       score_threshold: Number(process.env.RAG_SCORE_THRESHOLD ?? '0.44'),
     }, correlationId);
     if (ragResult.status !== 'ok' || ragResult.chunks.length === 0) {
-      const reason = ragResult.status === 'ok' ? 'INSUFFICIENT_GROUNDING' : 'RAG_UNAVAILABLE';
+      const reason = ragResult.status === 'not_enough_evidence' ? 'INSUFFICIENT_GROUNDING' : 'RAG_UNAVAILABLE';
       throw new PlanUnavailableException({ reason });
     }
     return {
