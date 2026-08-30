@@ -1,0 +1,32 @@
+import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
+import { OnboardingGuardService } from './onboarding.guard';
+import { OnboardingGuardServiceImpl } from './onboarding.service';
+import { ProfileController } from './profile.controller';
+import { ProfileService } from './profile.service';
+import { ProfileDeletionService } from './profile-deletion.service';
+import { ProfileLifecycleService } from './profile-lifecycle.service';
+
+/**
+ * Profile feature module (US3). Owns Profile / Preferences / OnboardingState
+ * (data-model §5–§7) and the backend onboarding guard. Imports AuthModule so
+ * ProfileService can read consent status via ConsentService without cross-module
+ * table access (SAD §11). The guard (T013/T033) is exported for US4/US6/US9 route
+ * handlers; ProfileDeletionService is exported for the RetentionModule (Polish).
+ */
+@Module({
+  imports: [AuthModule],
+  controllers: [ProfileController],
+  providers: [
+    ProfileService,
+    ProfileLifecycleService,
+    ProfileDeletionService,
+    { provide: OnboardingGuardService, useClass: OnboardingGuardServiceImpl },
+  ],
+  exports: [
+    OnboardingGuardService,
+    ProfileLifecycleService,
+    ProfileDeletionService,
+  ],
+})
+export class ProfileModule {}
